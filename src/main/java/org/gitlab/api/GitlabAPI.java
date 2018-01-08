@@ -26,11 +26,10 @@ import java.util.List;
  * @author &#064;timols (Tim O)
  */
 @SuppressWarnings("unused")
-public class GitlabAPI {
+public abstract class GitlabAPI {
 
     public static final ObjectMapper MAPPER = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-    private static final String API_NAMESPACE = "/api/v4";
     private static final String PARAM_SUDO = "sudo";
     private static final String PARAM_MAX_ITEMS_PER_PAGE = new Pagination().withPerPage(Pagination.MAX_ITEMS_PER_PAGE).toString();
 
@@ -44,7 +43,7 @@ public class GitlabAPI {
     private int requestTimeout = 0;
     private String userAgent = GitlabAPI.class.getCanonicalName() + "/" + System.getProperty("java.version");
 
-    private GitlabAPI(String hostUrl, String apiToken, TokenType tokenType, AuthMethod method) {
+    GitlabAPI(String hostUrl, String apiToken, TokenType tokenType, AuthMethod method) {
         this.hostUrl = hostUrl.endsWith("/") ? hostUrl.replaceAll("/$", "") : hostUrl;
         this.apiToken = apiToken;
         this.tokenType = tokenType;
@@ -52,22 +51,51 @@ public class GitlabAPI {
     }
 
     public static GitlabSession connect(String hostUrl, String username, String password) throws IOException {
+        return connect(hostUrl, username, password, Version.V4);
+    }
+
+    public static GitlabSession connect(String hostUrl, String username, String password, Version version) throws IOException {
         String tailUrl = GitlabSession.URL;
-        GitlabAPI api = connect(hostUrl, null, null, null);
+        GitlabAPI api = connect(hostUrl, null, null, null, version);
         return api.dispatch().with("login", username).with("password", password)
                 .to(tailUrl, GitlabSession.class);
     }
 
     public static GitlabAPI connect(String hostUrl, String apiToken) {
-        return new GitlabAPI(hostUrl, apiToken, TokenType.PRIVATE_TOKEN, AuthMethod.HEADER);
+        return connect(hostUrl, apiToken, Version.V4);
+    }
+
+    public static GitlabAPI connect(String hostUrl, String apiToken, Version version) {
+        if (version == Version.V3) {
+            return new GitlabAPIV3(hostUrl, apiToken, TokenType.PRIVATE_TOKEN, AuthMethod.HEADER);
+        } else {
+            return new GitlabAPIV4(hostUrl, apiToken, TokenType.PRIVATE_TOKEN, AuthMethod.HEADER);
+        }
     }
 
     public static GitlabAPI connect(String hostUrl, String apiToken, TokenType tokenType) {
-        return new GitlabAPI(hostUrl, apiToken, tokenType, AuthMethod.HEADER);
+        return connect(hostUrl, apiToken, tokenType, Version.V4);
+    }
+
+    public static GitlabAPI connect(String hostUrl, String apiToken, TokenType tokenType, Version version) {
+        if (version == Version.V3) {
+            return new GitlabAPIV3(hostUrl, apiToken, tokenType, AuthMethod.HEADER);
+        } else {
+            return new GitlabAPIV4(hostUrl, apiToken, tokenType, AuthMethod.HEADER);
+        }
     }
 
     public static GitlabAPI connect(String hostUrl, String apiToken, TokenType tokenType, AuthMethod method) {
-        return new GitlabAPI(hostUrl, apiToken, tokenType, method);
+        return connect(hostUrl, apiToken, tokenType, method);
+    }
+
+    public static GitlabAPI connect(String hostUrl, String apiToken, TokenType tokenType, AuthMethod method, Version version) {
+        if (version == Version.V3) {
+            return new GitlabAPIV3(hostUrl, apiToken, tokenType, method);
+        } else {
+            return new GitlabAPIV4(hostUrl, apiToken, tokenType, method);
+        }
+
     }
 
     public GitlabAPI ignoreCertificateErrors(boolean ignoreCertificateErrors) {
@@ -105,12 +133,7 @@ public class GitlabAPI {
         return proxy;
     }
 
-    public URL getAPIUrl(String tailAPIUrl) throws IOException {
-        if (!tailAPIUrl.startsWith("/")) {
-            tailAPIUrl = "/" + tailAPIUrl;
-        }
-        return new URL(hostUrl + API_NAMESPACE + tailAPIUrl);
-    }
+    public abstract URL getAPIUrl(String tailAPIUrl) throws IOException;
 
     public URL getUrl(String tailAPIUrl) throws IOException {
         if (!tailAPIUrl.startsWith("/")) {

@@ -2,9 +2,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>org.gitlab</groupId>
+	<groupId>cn.xuchunh</groupId>
 	<artifactId>java-gitlab-api</artifactId>
-	<version>4.0.1-SNAPSHOT</version>
+	<version>1.0.0-SNAPSHOT</version>
 
 	<name>Gitlab Java API Wrapper</name>
 	<description>A Java wrapper for the Gitlab Git Hosting Server API</description>
@@ -65,8 +65,6 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<maven-surefire-plugin.version>2.20</maven-surefire-plugin.version>
-		<!-- wait three minutes for gitlab to start -->
-		<docker-maven-plugin.timeOut>180000</docker-maven-plugin.timeOut>
 	</properties>
 
 	<dependencies>
@@ -113,31 +111,6 @@
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-failsafe-plugin</artifactId>
-				<version>${maven-surefire-plugin.version}</version>
-				<executions>
-					<execution>
-						<id>default-integration-test</id>
-						<goals>
-							<goal>integration-test</goal>
-						</goals>
-						<configuration>
-							<systemPropertyVariables>
-								<docker.host.address>${docker.host.address}</docker.host.address>
-								<gitlab.port>${gitlab.port}</gitlab.port>
-							</systemPropertyVariables>
-						</configuration>
-					</execution>
-					<execution>
-						<id>default-verify</id>
-						<goals>
-							<goal>verify</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
 				<version>2.4</version>
 				<executions>
@@ -152,86 +125,4 @@
 			</plugin>
 		</plugins>
 	</build>
-	<profiles>
-		<profile>
-			<id>docker-ide</id>
-			<properties>
-				<docker.host.address>127.0.0.1</docker.host.address>
-				<gitlab.port>18080</gitlab.port>
-			</properties>
-		</profile>
-		<profile>
-			<id>docker-gitlab</id>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>io.fabric8</groupId>
-						<artifactId>docker-maven-plugin</artifactId>
-						<version>0.23.0</version>
-						<executions>
-							<execution>
-								<id>default-start</id>
-								<goals>
-									<goal>start</goal>
-								</goals>
-							</execution>
-							<execution>
-								<id>default-stop</id>
-								<goals>
-									<goal>stop</goal>
-								</goals>
-							</execution>
-						</executions>
-						<configuration>
-							<images>
-								<image>
-									<name>gitlab/gitlab-ce:latest</name>
-									<alias>gitlab</alias>
-									<run>
-										<ports>
-											<port>gitlab.port:80</port>
-										</ports>
-										<volumes>
-											<bind>
-												<volume>
-													${user.dir}/src/test/resources/gitlab.rb:/etc/gitlab/gitlab.rb
-												</volume>
-											</bind>
-										</volumes>
-										<wait>
-											<http>
-												<url>http://${docker.host.address}:${gitlab.port}/api/v4/version</url>
-												<method>GET</method>
-												<status>401</status>
-											</http>
-											<time>${docker-maven-plugin.timeOut}</time>
-										</wait>
-									</run>
-								</image>
-							</images>
-						</configuration>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
-        <profile>
-          <id>doclint-java8-disable</id>
-          <activation>
-            <jdk>[1.8,)</jdk>
-          </activation>
-
-          <build>
-            <plugins>
-              <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.0.0</version>
-                <configuration>
-                  <additionalparam>-Xdoclint:none</additionalparam>
-                </configuration>
-              </plugin>
-            </plugins>
-          </build>
-        </profile>
-      </profiles>
 </project>
